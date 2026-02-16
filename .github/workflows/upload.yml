@@ -89,13 +89,13 @@ jobs:
           STEP_START=$(date +%s)
           echo "▶️ START Download binaries"
 
-          curl -L -H "Authorization: token $GH_TOKEN" \
-            -o baidu-cli \
-            https://github.com/xuhongming251/save_network_disk/releases/download/1.0.0/baidu-cli
+          gh release download 1.0.0 \
+            --repo xuhongming251/save_network_disk \
+            --pattern "baidu-cli" \
+            --pattern "save-network-disk"
           
-          curl -L -H "Authorization: token $GH_TOKEN" \
-            -o save-network-disk \
-            https://github.com/xuhongming251/save_network_disk/releases/download/1.0.0/save-network-disk
+          echo "Files after download:"
+          ls -R
 
           STEP_END=$(date +%s)
           COST=$((STEP_END-STEP_START))
@@ -122,6 +122,9 @@ jobs:
         run: |
           STEP_START=$(date +%s)
           echo "▶️ START Download"
+          
+          echo "Files before execution:"
+          ls -lh
 
           ./save-network-disk \
             --url "${{ inputs.url }}" \

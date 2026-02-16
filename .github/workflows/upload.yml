@@ -84,10 +84,15 @@ jobs:
 
       - name: 25-Download binaries
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
           STEP_START=$(date +%s)
           echo "▶️ START Download binaries"
+
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ Error: GH_TOKEN is not set. Please add it to your repository secrets."
+            exit 1
+          fi
 
           gh release download 1.0.0 \
             --repo xuhongming251/save_network_disk \

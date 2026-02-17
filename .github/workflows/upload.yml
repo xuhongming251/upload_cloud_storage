@@ -27,11 +27,23 @@ on:
           - '2'
         default: '0'
 
-run-name: "upload-${{ github.event.inputs.trace_id }}"
+run-name: >-
+  [${{ 
+    github.event.inputs.channel == '0' && 'quark' ||
+    github.event.inputs.channel == '1' && 'baidu' ||
+    github.event.inputs.channel == '2' && 'cmcc' ||
+    'unknown'
+  }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
 
 jobs:
   upload:
-    name: "upload-${{ github.event.inputs.trace_id }}"
+    name: >-
+      [${{ 
+        github.event.inputs.channel == '0' && 'quark' ||
+        github.event.inputs.channel == '1' && 'baidu' ||
+        github.event.inputs.channel == '2' && 'cloud' ||
+        'unknown'
+      }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
     runs-on: Ubuntu-Slim
     environment: prod
 

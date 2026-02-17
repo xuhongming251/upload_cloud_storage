@@ -44,7 +44,7 @@ jobs:
         github.event.inputs.channel == '2' && 'cmcc' ||
         'unknown'
       }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
-    runs-on: Ubuntu-Slim
+    runs-on: ubuntu-latest
     environment: prod
 
     steps:

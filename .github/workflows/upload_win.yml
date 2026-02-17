@@ -81,17 +81,17 @@ jobs:
       - name: 20-Checkout code
         uses: actions/checkout@v4
 
-      # - name: 25-Install dependencies
-      #   run: |
-      #     $start = Get-Date
+      - name: 25-Install dependencies
+        run: |
+          $start = Get-Date
 
-      #     python -m pip install --upgrade pip
-      #     pip install -r requirements.txt --no-cache-dir
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --no-cache-dir
 
-      #     Get-PSDrive C
+          Get-PSDrive C
 
-      #     $cost = ((Get-Date) - $start).TotalSeconds
-      #     "- Install dependencies: $cost s" >> $env:GITHUB_STEP_SUMMARY
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Install dependencies: $cost s" >> $env:GITHUB_STEP_SUMMARY
 
       - name: 30-Download binaries
         env:

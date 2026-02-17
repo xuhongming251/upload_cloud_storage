@@ -94,21 +94,21 @@ jobs:
       - name: 20-Checkout code
         uses: actions/checkout@v4
         
-      - name: 25-Install dependencies
-        run: |
-          STEP_START=$(date +%s)
-          echo "▶️ START Install dependencies"
+      # - name: 25-Install dependencies
+      #   run: |
+      #     STEP_START=$(date +%s)
+      #     echo "▶️ START Install dependencies"
 
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt --no-cache-dir
+      #     python -m pip install --upgrade pip
+      #     pip install -r requirements.txt --no-cache-dir
 
-          echo "After Install Deps:"
-          df -h /
+      #     echo "After Install Deps:"
+      #     df -h /
 
-          STEP_END=$(date +%s)
-          COST=$((STEP_END-STEP_START))
-          echo "⏱ Install dependencies cost: ${COST}s"
-          echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
+      #     STEP_END=$(date +%s)
+      #     COST=$((STEP_END-STEP_START))
+      #     echo "⏱ Install dependencies cost: ${COST}s"
+      #     echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 30-Download binaries
         env:

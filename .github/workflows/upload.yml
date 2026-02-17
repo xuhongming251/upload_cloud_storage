@@ -93,8 +93,24 @@ jobs:
 
       - name: 20-Checkout code
         uses: actions/checkout@v4
+        
+      - name: 25-Install dependencies
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Install dependencies"
 
-      - name: 25-Download binaries
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --no-cache-dir
+
+          echo "After Install Deps:"
+          df -h /
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Install dependencies cost: ${COST}s"
+          echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 30-Download binaries
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -118,8 +134,9 @@ jobs:
           COST=$((STEP_END-STEP_START))
           echo "⏱ Download binaries cost: ${COST}s"
           echo "- Download binaries: ${COST}s" >> $GITHUB_STEP_SUMMARY
+          
 
-      - name: 30-Set permissions
+      - name: 40-Set permissions
         run: |
           STEP_START=$(date +%s)
           echo "▶️ START Set permissions"

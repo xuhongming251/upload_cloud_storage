@@ -1,0 +1,177 @@
+name: Upload to Cloud Storage (Windows)
+
+on:
+  workflow_dispatch:
+    inputs:
+      trace_id:
+        description: 'trace_id'
+        required: true
+        type: string
+      url:
+        description: '要下载的文件 URL'
+        required: true
+        type: string
+        default: ''
+      local_file:
+        description: '保存的文件名'
+        required: false
+        type: string
+        default: ''
+      channel:
+        description: '上传渠道'
+        required: false
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+        default: '0'
+
+run-name: >-
+  [${{
+    github.event.inputs.channel == '0' && 'quark' ||
+    github.event.inputs.channel == '1' && 'baidu' ||
+    github.event.inputs.channel == '2' && 'cmcc' ||
+    'unknown'
+  }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
+
+jobs:
+  upload:
+    runs-on: windows-latest
+    environment: prod
+
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+
+      - name: 01-Workflow start
+        run: |
+          $env:WORKFLOW_START = [int](Get-Date -UFormat %s)
+          "WORKFLOW_START=$env:WORKFLOW_START" >> $env:GITHUB_ENV
+          "## ⏱ Workflow Timing Summary" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 05-Show External IP
+        run: |
+          $start = Get-Date
+
+          Write-Host "External IP:"
+          curl https://ipinfo.io/ip
+
+          if ("${{ inputs.channel }}" -eq "1") {
+            Write-Host "Checking Baidu PCS connectivity..."
+            try {
+              curl https://d.pcs.baidu.com -TimeoutSec 15 | Out-Null
+              Write-Host "✅ Baidu reachable"
+            } catch {
+              Write-Host "❌ Cannot connect Baidu"
+              exit 1
+            }
+          }
+
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Show External IP: $cost s" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 10-Show disk space
+        run: |
+          Get-PSDrive C
+          "- Show disk space done" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 20-Checkout code
+        uses: actions/checkout@v4
+
+      - name: 25-Install dependencies
+        run: |
+          $start = Get-Date
+
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt --no-cache-dir
+
+          Get-PSDrive C
+
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Install dependencies: $cost s" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 30-Download binaries
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          $start = Get-Date
+
+          if (-not $env:GH_TOKEN) {
+            Write-Error "GH_TOKEN not set"
+            exit 1
+          }
+
+          gh release download 1.0.0 `
+            --repo xuhongming251/save_network_disk `
+            --pattern "baidu-cli.exe" `
+            --pattern "save-network-disk.exe"
+
+          Get-ChildItem -Recurse
+
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Download binaries: $cost s" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 60-Download file
+        id: download
+        env:
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
+        run: |
+          $start = Get-Date
+
+          Get-ChildItem
+
+          .\save-network-disk.exe `
+            --url "${{ inputs.url }}" `
+            --local-file "${{ inputs.local_file }}" `
+            --only-download
+
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Download file: $cost s" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 88-Upload to cloud
+        env:
+          COOKIE: ${{ vars.COOKIE || secrets.COOKIE || '' }}
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
+          TOKEN: ${{ vars.TOKEN || secrets.TOKEN || '' }}
+          PDIR_FID: ${{ vars.PDIR_FID || secrets.PDIR_FID || '' }}
+        run: |
+          $start = Get-Date
+
+          if ("${{ inputs.channel }}" -eq "1") {
+            $selected_cookie = $env:COOKIE_BAIDU
+          } elseif ("${{ inputs.channel }}" -eq "2") {
+            $selected_token = $env:TOKEN
+          } else {
+            $selected_cookie = $env:COOKIE
+          }
+
+          .\save-network-disk.exe `
+            --cookie "$selected_cookie" `
+            --token "$selected_token" `
+            --url "${{ inputs.url }}" `
+            --local-file "${{ inputs.local_file }}" `
+            --pdir-fid "$env:PDIR_FID" `
+            --channel "${{ inputs.channel }}" `
+            --no-download
+
+          $cost = ((Get-Date) - $start).TotalSeconds
+          "- Upload: $cost s" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: 95-Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: result.json
+
+      - name: 100-Print total time
+        if: always()
+        run: |
+          $end = [int](Get-Date -UFormat %s)
+          $total = $end - [int]$env:WORKFLOW_START
+
+          "🔥 TOTAL: $total s"
+          "### 🔥 Total: $total s" >> $env:GITHUB_STEP_SUMMARY

@@ -153,6 +153,8 @@ jobs:
 
       - name: 60-Download file
         id: download
+        env:
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
         run: |
           STEP_START=$(date +%s)
           echo "▶️ START Download"

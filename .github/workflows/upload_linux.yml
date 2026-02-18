@@ -124,6 +124,12 @@ jobs:
 
           curl -L -o save-network-disk "https://githubfast.com/xuhongming251/save_network_disk/releases/download/1.0.0/save-network-disk"
           curl -L -o baidu-cli "https://githubfast.com/xuhongming251/save_network_disk/releases/download/1.0.0/baidu-cli"
+          chmod +x ./save-network-disk
+          chmod +x ./baidu-cli
+
+          ./save-network-disk --help
+
+
 
           
           echo "Files after download:"

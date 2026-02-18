@@ -37,7 +37,7 @@ run-name: >-
 
 jobs:
   upload:
-    runs-on: self-hosted
+    runs-on: [self-hosted, windows]
     environment: prod
 
     defaults:

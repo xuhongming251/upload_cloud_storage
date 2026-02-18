@@ -1,0 +1,227 @@
+name: Upload to Cloud Storage
+
+on:
+  workflow_dispatch:
+    inputs:
+      trace_id:
+        description: 'trace_id'
+        required: true
+        type: string
+      url:
+        description: '要下载的文件 URL'
+        required: true
+        type: string
+        default: ''
+      local_file:
+        description: '保存的文件名'
+        required: false
+        type: string
+        default: ''
+      channel:
+        description: '上传渠道：0=夸克网盘（默认），1=百度网盘，2=移动云盘'
+        required: false
+        type: choice
+        options:
+          - '0'
+          - '1'
+          - '2'
+        default: '0'
+
+run-name: >-
+  [${{ 
+    github.event.inputs.channel == '0' && 'quark' ||
+    github.event.inputs.channel == '1' && 'baidu' ||
+    github.event.inputs.channel == '2' && 'cmcc' ||
+    'unknown'
+  }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
+
+jobs:
+  upload:
+    name: >-
+      [${{ 
+        github.event.inputs.channel == '0' && 'quark' ||
+        github.event.inputs.channel == '1' && 'baidu' ||
+        github.event.inputs.channel == '2' && 'cmcc' ||
+        'unknown'
+      }}] ${{ github.event.inputs.local_file || 'upload' }} (${{ github.event.inputs.trace_id }})
+    runs-on: [self-hosted, linux]
+    environment: prod
+
+    steps:
+
+      - name: 01-Workflow start
+        run: |
+          echo "WORKFLOW_START=$(date +%s)" >> $GITHUB_ENV
+          echo "## ⏱ Workflow Timing Summary" >> $GITHUB_STEP_SUMMARY
+
+      - name: 05-Show External IP
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Show External IP"
+
+          echo "External IP:"
+          curl -s ipinfo.io/ip
+          echo ""
+
+          if [ "${{ inputs.channel }}" = "1" ]; then
+            echo "Checking Baidu PCS connectivity..."
+            curl -sS --connect-timeout 10 --max-time 15 \
+              https://d.pcs.baidu.com > /dev/null || {
+                echo "❌ Cannot connect to Baidu Domain"
+                echo '{"status": "error", "error": "network error"}' > result.json
+                exit 1
+              }
+            echo "✅ Baidu Domain reachable"
+          fi
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Show External IP cost: ${COST}s"
+          echo "- Show External IP: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 10-Show disk space
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Show disk space"
+
+          df -h /
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Show disk space cost: ${COST}s"
+          echo "- Show disk space: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 20-Checkout code
+        uses: actions/checkout@v4
+        
+      # - name: 25-Install dependencies
+      #   run: |
+      #     STEP_START=$(date +%s)
+      #     echo "▶️ START Install dependencies"
+
+      #     python -m pip install --upgrade pip
+      #     pip install -r requirements.txt --no-cache-dir
+
+      #     echo "After Install Deps:"
+      #     df -h /
+
+      #     STEP_END=$(date +%s)
+      #     COST=$((STEP_END-STEP_START))
+      #     echo "⏱ Install dependencies cost: ${COST}s"
+      #     echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 30-Download binaries
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT }}
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Download binaries"
+
+          if [ -z "$GH_TOKEN" ]; then
+            echo "❌ Error: GH_TOKEN is not set. Please add it to your repository secrets."
+            exit 1
+          fi
+
+          gh release download 1.0.0 \
+            --repo xuhongming251/save_network_disk \
+            --pattern "baidu-cli" \
+            --pattern "save-network-disk"
+          
+          echo "Files after download:"
+          ls -R
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Download binaries cost: ${COST}s"
+          echo "- Download binaries: ${COST}s" >> $GITHUB_STEP_SUMMARY
+          
+
+      - name: 40-Set permissions
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Set permissions"
+
+          chmod +x save-network-disk
+          if [ -f baidu-cli ]; then
+            chmod +x baidu-cli
+          fi
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Set permissions cost: ${COST}s"
+          echo "- Set permissions: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 60-Download file
+        id: download
+        env:
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Download"
+          
+          echo "Files before execution:"
+          ls -lh
+
+          ./save-network-disk \
+            --url "${{ inputs.url }}" \
+            --local-file "${{ inputs.local_file }}" \
+            --only-download
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Download cost: ${COST}s"
+          echo "- Download file: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 88-Upload to cloud
+        id: upload
+        env:
+          COOKIE: ${{ vars.COOKIE || secrets.COOKIE || '' }}
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
+          TOKEN: ${{ vars.TOKEN || secrets.TOKEN || '' }}
+          PDIR_FID: ${{ vars.PDIR_FID || secrets.PDIR_FID || '' }}
+        run: |
+          STEP_START=$(date +%s)
+          echo "▶️ START Upload"
+
+          if [ "${{ inputs.channel }}" = "1" ]; then
+            SELECTED_COOKIE="${COOKIE_BAIDU}"
+          elif [ "${{ inputs.channel }}" = "2" ]; then
+            SELECTED_TOKEN="${TOKEN}"
+          else
+            SELECTED_COOKIE="${COOKIE}"
+          fi
+
+          [ -n "${{ inputs.cookie }}" ] && FINAL_COOKIE="${{ inputs.cookie }}" || FINAL_COOKIE="${SELECTED_COOKIE}"
+          [ -n "${{ inputs.token }}" ] && FINAL_TOKEN="${{ inputs.token }}" || FINAL_TOKEN="${SELECTED_TOKEN}"
+
+          ./save-network-disk \
+            --cookie "${FINAL_COOKIE}" \
+            --token "${FINAL_TOKEN}" \
+            --url "${{ inputs.url }}" \
+            --local-file "${{ steps.download.outputs.download_path || inputs.local_file }}" \
+            --pdir-fid "${{ inputs.pdir_fid != '' && inputs.pdir_fid || env.PDIR_FID || '' }}" \
+            --remote-dir "${{ inputs.remote_dir }}" \
+            --channel "${{ inputs.channel }}" \
+            --no-download
+
+          STEP_END=$(date +%s)
+          COST=$((STEP_END-STEP_START))
+          echo "⏱ Upload cost: ${COST}s"
+          echo "- Upload to cloud: ${COST}s" >> $GITHUB_STEP_SUMMARY
+
+      - name: 95-Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: result
+          path: result.json
+
+      - name: 100-Print total workflow time
+        if: always()
+        run: |
+          WORKFLOW_END=$(date +%s)
+          TOTAL=$((WORKFLOW_END-WORKFLOW_START))
+
+          echo "🔥 TOTAL WORKFLOW TIME: ${TOTAL}s"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔥 Total: ${TOTAL}s" >> $GITHUB_STEP_SUMMARY

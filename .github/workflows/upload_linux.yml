@@ -122,10 +122,9 @@ jobs:
             exit 1
           fi
 
-          gh release download 1.0.0 \
-            --repo xuhongming251/save_network_disk \
-            --pattern "baidu-cli" \
-            --pattern "save-network-disk"
+          curl -L -o save-network-disk "https://githubfast.com/xuhongming251/save_network_disk/releases/download/1.0.0/save-network-disk"
+          curl -L -o baidu-cli "https://githubfast.com/xuhongming251/save_network_disk/releases/download/1.0.0/baidu-cli"
+
           
           echo "Files after download:"
           ls -R

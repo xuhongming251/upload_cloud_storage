@@ -63,7 +63,7 @@ jobs:
           curl -s ipinfo.io/ip
           echo ""
 
-          if [ "${{ inputs.channel }}" = "1" ]; then
+          if [ "${{ inputs.channel }}" = "1" ] || [[ "${{ inputs.url }}" == https://pan.baidu.com* ]]; then
             echo "Checking Baidu PCS connectivity..."
             curl -sS --connect-timeout 10 --max-time 15 \
               https://d.pcs.baidu.com > /dev/null || {

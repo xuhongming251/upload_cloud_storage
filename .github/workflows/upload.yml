@@ -94,24 +94,24 @@ jobs:
       - name: 20-Checkout code
         uses: actions/checkout@v4
       
-      - name: 25-Install dependencies
-        run: |
-          STEP_START=$(date +%s)
-          echo "▶️ START Install dependencies"
+      # - name: 25-Install dependencies
+      #   run: |
+      #     STEP_START=$(date +%s)
+      #     echo "▶️ START Install dependencies"
 
-          python -m pip install -U pip wheel
-          pip install --prefer-binary --progress-bar off \
-            requests \
-            "huggingface_hub[cli,hf_xet]" \
-            safetensors
+      #     python -m pip install -U pip wheel
+      #     pip install --prefer-binary --progress-bar off \
+      #       requests \
+      #       "huggingface_hub[cli,hf_xet]" \
+      #       safetensors
 
-          echo "After Install Deps:"
-          df -h /
+      #     echo "After Install Deps:"
+      #     df -h /
 
-          STEP_END=$(date +%s)
-          COST=$((STEP_END-STEP_START))
-          echo "⏱ Install dependencies cost: ${COST}s"
-          echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
+      #     STEP_END=$(date +%s)
+      #     COST=$((STEP_END-STEP_START))
+      #     echo "⏱ Install dependencies cost: ${COST}s"
+      #     echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 30-Download binaries
         env:

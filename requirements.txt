@@ -1,2 +1,6 @@
 requests
 huggingface_hub[cli]
+huggingface_hub[hf_xet]
+hf_xet
+accelerate
+safetensors

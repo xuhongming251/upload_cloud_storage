@@ -245,7 +245,10 @@ jobs:
               owner: 'xuhongming251',
               repo: 'modelhub',
               workflow_id: 'sync.yml',
-              ref: 'main'
+              ref: 'main',
+              inputs: {
+                from_upload: 'true'
+              }
             });
 
       - name: 100-Print total workflow time

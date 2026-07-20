@@ -142,8 +142,10 @@ jobs:
             exit 1
           fi
 
-          cp /home/runner/save-network-disk ./
-          cp /home/runner/baidu-cli ./
+          gh release download 1.0.0 \
+            --repo xuhongming251/save_network_disk \
+            --pattern "baidu-cli" \
+            --pattern "save-network-disk"
 
           chmod +x ./save-network-disk
           chmod +x ./baidu-cli

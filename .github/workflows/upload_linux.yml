@@ -26,6 +26,26 @@ on:
           - '1'
           - '2'
         default: '0'
+      cookie:
+        description: '临时覆盖 Cookie（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      token:
+        description: '临时覆盖 Token（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      pdir_fid:
+        description: '目标父目录 ID（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      remote_dir:
+        description: '目标网盘目录'
+        required: false
+        type: string
+        default: ''
 
 run-name: >-
   [${{ 
@@ -216,6 +236,33 @@ jobs:
         with:
           name: result
           path: result.json
+
+      - name: 98-Validate result.json
+        run: |
+          if [ ! -f result.json ]; then
+            echo "❌ result.json not found"
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          result_path = pathlib.Path("result.json")
+          try:
+              data = json.loads(result_path.read_text(encoding="utf-8"))
+          except Exception as exc:
+              print(f"❌ Invalid result.json: {exc}")
+              print(result_path.read_text(encoding="utf-8", errors="replace"))
+              sys.exit(1)
+
+          status = data.get("status", "unknown")
+          if status != "success":
+              print(f"❌ Failed with status={status}")
+              print(json.dumps(data, ensure_ascii=False, indent=2))
+              sys.exit(1)
+          PY
 
       - name: 100-Print total workflow time
         if: always()

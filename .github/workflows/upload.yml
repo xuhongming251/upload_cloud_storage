@@ -26,6 +26,26 @@ on:
           - '1'
           - '2'
         default: '0'
+      cookie:
+        description: '临时覆盖 Cookie（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      token:
+        description: '临时覆盖 Token（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      pdir_fid:
+        description: '目标父目录 ID（默认使用仓库变量/密钥）'
+        required: false
+        type: string
+        default: ''
+      remote_dir:
+        description: '目标网盘目录'
+        required: false
+        type: string
+        default: ''
 
 run-name: >-
   [${{ 

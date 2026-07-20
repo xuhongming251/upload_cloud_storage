@@ -85,13 +85,13 @@ jobs:
 
           if [ "${{ inputs.channel }}" = "1" ] || [[ "${{ inputs.url }}" == https://pan.baidu.com* ]]; then
             echo "Checking Baidu PCS connectivity..."
-            curl -sS --connect-timeout 10 --max-time 15 \
-              https://d.pcs.baidu.com > /dev/null || {
-                echo "❌ Cannot connect to Baidu Domain"
-                echo '{"status": "error", "error": "network error"}' > result.json
-                exit 1
-              }
-            echo "✅ Baidu Domain reachable"
+            if curl -sS --connect-timeout 10 --max-time 15 \
+              https://d.pcs.baidu.com > /dev/null; then
+              echo "✅ Baidu Domain reachable"
+            else
+              echo "⚠️ Baidu connectivity precheck timed out; continuing to real upload."
+              echo "Upload result will be validated by result.json."
+            fi
           fi
 
           STEP_END=$(date +%s)

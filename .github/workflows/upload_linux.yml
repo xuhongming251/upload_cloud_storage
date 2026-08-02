@@ -126,6 +126,7 @@ jobs:
           repository: xuhongming251/save_network_disk
           ref: v1.0.5
           path: diagnostic-source
+          token: ${{ secrets.GH_PAT }}
 
       - name: 25-Baidu download speed diagnostic
         if: inputs.diagnostic_only == 'true'

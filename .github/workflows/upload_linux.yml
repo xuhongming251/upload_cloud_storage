@@ -46,6 +46,14 @@ on:
         required: false
         type: string
         default: ''
+      diagnostic_only:
+        description: '仅运行百度下载速度诊断'
+        required: false
+        type: choice
+        options:
+          - 'false'
+          - 'true'
+        default: 'false'
 
 run-name: >-
   [${{ 
@@ -111,6 +119,123 @@ jobs:
           echo "⏱ Show disk space cost: ${COST}s"
           echo "- Show disk space: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
+      - name: 20-Checkout downloader source for diagnostic
+        if: inputs.diagnostic_only == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: xuhongming251/save_network_disk
+          ref: v1.0.5
+          path: diagnostic-source
+
+      - name: 25-Baidu download speed diagnostic
+        if: inputs.diagnostic_only == 'true'
+        env:
+          COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet requests
+          python3 -u - <<'PY'
+          import json
+          import os
+          import pathlib
+          import sys
+          import time
+          from urllib.parse import urlparse
+
+          sys.path.insert(0, str(pathlib.Path("diagnostic-source").resolve()))
+          from baidu.baidu_pcs import BaiduPCS
+
+          cookie = os.environ.get("COOKIE_BAIDU", "").strip()
+          if not cookie:
+              raise SystemExit("COOKIE_BAIDU is not configured")
+
+          client = BaiduPCS()
+          client.set_auth(cookie_str=cookie)
+
+          membership = {"is_vip": None, "vip_type": None, "is_svip": None}
+          response = client.session.get(
+              "https://pan.baidu.com/api/gettemplatevariable",
+              params={"fields": '["is_vip","vip_type","is_svip"]'},
+              timeout=(15, 30),
+          )
+          response.raise_for_status()
+          payload = response.json()
+          if payload.get("errno") != 0:
+              raise SystemExit(f"Baidu membership check failed: errno={payload.get('errno')}")
+          membership.update({key: payload.get("result", {}).get(key) for key in membership})
+          print("Membership flags:", json.dumps(membership, ensure_ascii=False))
+
+          remote_path = (
+              "/share/baidu_download_20260802_035711_e02730/Screen Studio/"
+              "Screen Studio 3.1.1-3414 M系列芯片.dmg"
+          )
+          expected_size = 213_304_918
+          probe = client.session.get(
+              "https://d.pcs.baidu.com/rest/2.0/pcs/file",
+              params={"method": "download", "path": remote_path, "app_id": "250528"},
+              headers={"User-Agent": "pan.baidu.com", "Range": "bytes=0-0"},
+              stream=True,
+              allow_redirects=True,
+              timeout=(15, 90),
+          )
+          probe_info = {
+              "status_code": probe.status_code,
+              "final_host": urlparse(probe.url).hostname,
+              "content_range": probe.headers.get("content-range", ""),
+              "accept_ranges": probe.headers.get("accept-ranges", ""),
+          }
+          probe.close()
+          print("Range probe:", json.dumps(probe_info, ensure_ascii=False))
+
+          results = []
+          root = pathlib.Path("diagnostic-downloads")
+          root.mkdir(exist_ok=True)
+          for workers in (1, 4, 8):
+              destination = root / f"workers-{workers}"
+              destination.mkdir(exist_ok=True)
+              started = time.monotonic()
+              result = client.download(
+                  remote_path,
+                  local_path=str(destination),
+                  parallel=workers,
+                  filename="sample.dmg",
+                  expected_size=expected_size,
+              )
+              elapsed = time.monotonic() - started
+              actual_size = int(result.get("size") or 0)
+              row = {
+                  "workers": workers,
+                  "status": result.get("status"),
+                  "elapsed_seconds": round(elapsed, 3),
+                  "bytes": actual_size,
+                  "mb_per_second": round(actual_size / elapsed / 1_000_000, 3) if elapsed else 0,
+                  "mib_per_second": round(actual_size / elapsed / 1024 / 1024, 3) if elapsed else 0,
+                  "message": result.get("message", ""),
+              }
+              print("A/B result:", json.dumps(row, ensure_ascii=False))
+              results.append(row)
+
+          report = {
+              "membership": membership,
+              "probe": probe_info,
+              "remote_path": remote_path,
+              "expected_size": expected_size,
+              "results": results,
+          }
+          pathlib.Path("baidu-speed-diagnostic.json").write_text(
+              json.dumps(report, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+          if any(row["status"] != "success" or row["bytes"] != expected_size for row in results):
+              raise SystemExit("One or more diagnostic downloads failed validation")
+          PY
+
+      - name: 27-Upload Baidu speed diagnostic
+        if: always() && inputs.diagnostic_only == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: baidu-speed-diagnostic
+          path: baidu-speed-diagnostic.json
+
       # - name: 20-Checkout code
       #   uses: actions/checkout@v4
         
@@ -131,6 +256,7 @@ jobs:
       #     echo "- Install dependencies: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 30-Download binaries
+        if: inputs.diagnostic_only != 'true'
         env:
           GH_TOKEN: ${{ secrets.GH_PAT }}
         run: |
@@ -160,6 +286,7 @@ jobs:
           
 
       - name: 40-Set permissions
+        if: inputs.diagnostic_only != 'true'
         run: |
           STEP_START=$(date +%s)
           echo "▶️ START Set permissions"
@@ -175,6 +302,7 @@ jobs:
           echo "- Set permissions: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 60-Download file
+        if: inputs.diagnostic_only != 'true'
         id: download
         env:
           COOKIE_BAIDU: ${{ vars.COOKIE_BAIDU || secrets.COOKIE_BAIDU || '' }}
@@ -196,6 +324,7 @@ jobs:
           echo "- Download file: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 88-Upload to cloud
+        if: inputs.diagnostic_only != 'true'
         id: upload
         env:
           COOKIE: ${{ vars.COOKIE || secrets.COOKIE || '' }}
@@ -234,13 +363,14 @@ jobs:
           echo "- Upload to cloud: ${COST}s" >> $GITHUB_STEP_SUMMARY
 
       - name: 95-Upload result
-        if: always()
+        if: always() && inputs.diagnostic_only != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: result
           path: result.json
 
       - name: 98-Validate result.json
+        if: inputs.diagnostic_only != 'true'
         run: |
           if [ ! -f result.json ]; then
             echo "❌ result.json not found"

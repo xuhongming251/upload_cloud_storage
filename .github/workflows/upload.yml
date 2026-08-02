@@ -145,7 +145,7 @@ jobs:
             exit 1
           fi
 
-          gh release download v1.0.2 \
+          gh release download v1.0.3 \
             --repo xuhongming251/save_network_disk \
             --pattern "baidu-cli" \
             --pattern "save-network-disk"

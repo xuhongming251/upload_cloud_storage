@@ -104,7 +104,7 @@ jobs:
             exit 1
           }
 
-          gh release download 1.0.0 `
+          gh release download v1.0.2 `
             --repo xuhongming251/save_network_disk `
             --pattern "baidu-cli.exe" `
             --pattern "save-network-disk.exe"
@@ -155,6 +155,7 @@ jobs:
             --local-file "${{ inputs.local_file }}" `
             --pdir-fid "$env:PDIR_FID" `
             --channel "${{ inputs.channel }}" `
+            --trace-id "${{ inputs.trace_id }}" `
             --no-download
 
           $cost = ((Get-Date) - $start).TotalSeconds

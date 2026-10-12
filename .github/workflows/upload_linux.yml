@@ -40,7 +40,7 @@ on:
         description: '目标父目录 ID（默认使用仓库变量/密钥）'
         required: false
         type: string
-        default: ''
+        default: 'd13d20fd61e04bb0b89950555248d0bd'
       remote_dir:
         description: '目标网盘目录'
         required: false
